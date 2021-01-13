@@ -5,7 +5,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo "Running go fmt..."
-gofmt -s -w ./..
+go fmt ./...
 
 echo "Running unit tests..."
 go test ./... || exit
@@ -43,54 +43,54 @@ else
     echo -e "${GREEN}PASSED invalid option test"
 fi
 
-# NB you need to have pyyaml installed via pip install pyyaml for this to work
-if ./scc "examples/language/" --format cloc-yaml -o .tmp_scc_yaml >/dev/null && python <<EOS
-import yaml,sys
-try:
-    with open('.tmp_scc_yaml','r') as f:
-        data = yaml.load(f.read())
-        if type(data) is dict and data.keys():
-            sys.exit(0)
-        else:
-            print('data was {}'.format(type(data)))
-except Exception as e:
-    pass
-sys.exit(1)
-EOS
-
-then
-	echo -e "${GREEN}PASSED cloc-yaml format test"
-else
-    echo -e "${RED}======================================================="
-    echo -e "${RED}FAILED Should accept --format cloc-yaml and should generate valid output"
-    echo -e "=======================================================${NC}"
-    rm -f .tmp_scc_yaml
-    exit
-fi
-
-if ./scc "examples/language/" --format cloc-yml -o .tmp_scc_yaml >/dev/null && python <<EOS
-import yaml,sys
-try:
-    with open('.tmp_scc_yaml','r') as f:
-        data = yaml.load(f.read())
-        if type(data) is dict and data.keys():
-            sys.exit(0)
-        else:
-            print('data was {}'.format(type(data)))
-except Exception as e:
-    pass
-sys.exit(1)
-EOS
-
-then
-	echo -e "${GREEN}PASSED cloc-yml format test"
-else
-    echo -e "${RED}======================================================="
-    echo -e "${RED}FAILED Should accept --format cloc-yml and should generate valid output"
-    echo -e "=======================================================${NC}"
-    rm -f .tmp_scc_yaml
-    exit
-fi
+## NB you need to have pyyaml installed via pip install pyyaml for this to work
+#if ./scc "examples/language/" --format cloc-yaml -o .tmp_scc_yaml >/dev/null && python <<EOS
+#import yaml,sys
+#try:
+#    with open('.tmp_scc_yaml','r') as f:
+#        data = yaml.load(f.read())
+#        if type(data) is dict and data.keys():
+#            sys.exit(0)
+#        else:
+#            print('data was {}'.format(type(data)))
+#except Exception as e:
+#    pass
+#sys.exit(1)
+#EOS
+#
+#then
+#	echo -e "${GREEN}PASSED cloc-yaml format test"
+#else
+#    echo -e "${RED}======================================================="
+#    echo -e "${RED}FAILED Should accept --format cloc-yaml and should generate valid output"
+#    echo -e "=======================================================${NC}"
+#    rm -f .tmp_scc_yaml
+#    exit
+#fi
+#
+#if ./scc "examples/language/" --format cloc-yml -o .tmp_scc_yaml >/dev/null && python <<EOS
+#import yaml,sys
+#try:
+#    with open('.tmp_scc_yaml','r') as f:
+#        data = yaml.load(f.read())
+#        if type(data) is dict and data.keys():
+#            sys.exit(0)
+#        else:
+#            print('data was {}'.format(type(data)))
+#except Exception as e:
+#    pass
+#sys.exit(1)
+#EOS
+#
+#then
+#	echo -e "${GREEN}PASSED cloc-yml format test"
+#else
+#    echo -e "${RED}======================================================="
+#    echo -e "${RED}FAILED Should accept --format cloc-yml and should generate valid output"
+#    echo -e "=======================================================${NC}"
+#    rm -f .tmp_scc_yaml
+#    exit
+#fi
 
 if ./scc NOTAREALDIRECTORYORFILE > /dev/null ; then
     echo -e "${RED}================================================="
@@ -606,6 +606,15 @@ else
     exit
 fi
 
+if ./scc -f csv-stream | grep -q "Bytes"; then
+    echo -e "${GREEN}PASSED csv-stream bytes check"
+else
+    echo -e "${RED}======================================================="
+    echo -e "FAILED csv-stream bytes check"
+    echo -e "=======================================================${NC}"
+    exit
+fi
+
 if ./scc -f html | grep -q "Bytes"; then
     echo -e "${GREEN}PASSED html bytes check"
 else
@@ -760,13 +769,14 @@ echo -e  "${NC}Checking compile targets..."
 
 echo "   darwin..."
 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w"
-
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w"
 echo "   windows..."
 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w"
 GOOS=windows GOARCH=386 go build -ldflags="-s -w"
 echo "   linux..."
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"
 GOOS=linux GOARCH=386 go build -ldflags="-s -w"
+GOOS=linux GOARCH=arm64 go build -ldflags="-s -w"
 
 echo -e "${NC}Cleaning up..."
 rm ./scc

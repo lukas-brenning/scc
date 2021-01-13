@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"github.com/mattn/go-runewidth"
 	"strings"
 	"testing"
 )
@@ -606,6 +607,46 @@ func TestToCsvMultiple(t *testing.T) {
 	}
 }
 
+func TestToCsvStreamMultiple(t *testing.T) {
+	inputChan := make(chan *FileJob, 1000)
+	inputChan <- &FileJob{
+		Language:           "Go",
+		Filename:           "bbbb.go",
+		Extension:          "go",
+		Location:           "./",
+		Bytes:              1000,
+		Lines:              1000,
+		Code:               1000,
+		Comment:            1000,
+		Blank:              1000,
+		Complexity:         1000,
+		WeightedComplexity: 1000,
+		Binary:             false,
+	}
+	inputChan <- &FileJob{
+		Language:           "Go",
+		Filename:           "aaaa.go",
+		Extension:          "go",
+		Location:           "./",
+		Bytes:              1000,
+		Lines:              1000,
+		Code:               1000,
+		Comment:            1000,
+		Blank:              1000,
+		Complexity:         1000,
+		WeightedComplexity: 1000,
+		Binary:             false,
+	}
+	close(inputChan)
+	Debug = true // Increase coverage slightly
+	res := toCSVStream(inputChan)
+	Debug = false
+
+	if res != "" {
+		t.Error("Expected CSV return", res)
+	}
+}
+
 func TestToSQLSingle(t *testing.T) {
 	inputChan := make(chan *FileJob, 1000)
 	inputChan <- &FileJob{
@@ -1117,6 +1158,36 @@ func TestToHTMLTable(t *testing.T) {
 
 	if !strings.Contains(res, `<table id="scc-table">`) {
 		t.Error("Expected to have table element")
+	}
+}
+
+func TestUnicodeAwareTrimAscii(t *testing.T) {
+	tmp := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md"
+	res := unicodeAwareTrim(tmp, shortFormatFileTruncate)
+	if res != "~aaaaaaaaaaaaaaaaaaaaaaaaaa.md" {
+		t.Error("expected ~aaaaaaaaaaaaaaaaaaaaaaaaaa.md got", res)
+	}
+}
+
+func TestUnicodeAwareTrimUnicode(t *testing.T) {
+	tmp := "中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文中文.md"
+	res := unicodeAwareTrim(tmp, shortFormatFileTruncate)
+	if res != "~文中文中文中文中文中文中文.md" {
+		t.Error("expected ~文中文中文中文中文中文中文.md got", res)
+	}
+}
+
+func TestUnicodeAwareRightPad(t *testing.T) {
+	tmp := unicodeAwareRightPad("", 10)
+	if runewidth.StringWidth(tmp) != 10 {
+		t.Errorf("expected length of 10")
+	}
+}
+
+func TestUnicodeAwareRightPadUnicode(t *testing.T) {
+	tmp := unicodeAwareRightPad("中文", 10)
+	if runewidth.StringWidth(tmp) != 10 {
+		t.Errorf("expected length of 10")
 	}
 }
 

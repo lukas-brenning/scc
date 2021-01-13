@@ -23,7 +23,7 @@ Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org).
 
 #### Go Get
 
-If you are comfortable using Go and have >= 1.10 installed:
+If you are comfortable using Go and have >= 1.13 installed:
 
 `$ go get -u github.com/boyter/scc/`
 
@@ -95,12 +95,12 @@ For performance see the [Performance](https://github.com/boyter/scc#performance)
 
 Other similar projects,
 
- - [cloc](https://github.com/AlDanial/cloc) the original sloc counter
+ - [SLOCCount](https://www.dwheeler.com/sloccount/) the original sloc counter
+ - [cloc](https://github.com/AlDanial/cloc), inspired by SLOCCount; implemented in Perl for portability
  - [gocloc](https://github.com/hhatto/gocloc) a sloc counter in Go inspired by tokei
  - [loc](https://github.com/cgag/loc) rust implementation similar to tokei but often faster
  - [loccount](https://gitlab.com/esr/loccount) Go implementation written and maintained by ESR
  - [ployglot](https://github.com/vmchale/polyglot) ATS sloc counter
- - [sloccount](https://www.dwheeler.com/sloccount/) written as a faster cloc
  - [tokei](https://github.com/XAMPPRocky/tokei) fast, accurate and written in rust
 
 Interesting reading about other code counting projects tokei, loc, polyglot and loccount
@@ -178,7 +178,6 @@ Command line usage of `scc` is designed to be as simple as possible.
 Full details can be found in `scc --help` or `scc -h`. Note that the below reflects the state of master not a release.
 
 ```
-$ scc -h
 Sloc, Cloc and Code. Count lines of code in a directory with complexity estimation.
 Version 3.0.0 (beta)
 Ben Boyter <ben@boyter.org> + Contributors
@@ -195,7 +194,7 @@ Flags:
       --debug                       enable debug output
       --exclude-dir strings         directories to exclude (default [.git,.hg,.svn])
       --file-gc-count int           number of files to parse before turning the GC on (default 10000)
-  -f, --format string               set output format [tabular, wide, json, csv, cloc-yaml, html, html-table, sql, sql-insert] (default "tabular")
+  -f, --format string               set output format [tabular, wide, json, csv, csv-stream, cloc-yaml, html, html-table, sql, sql-insert] (default "tabular")
       --format-multi string         have multiple format output overriding --format [e.g. tabular:stdout,csv:file.csv,json:file.json]
       --gen                         identify generated files
       --generated-markers strings   string markers in head of generated files (default [do not edit])
@@ -285,7 +284,7 @@ You can also run against multiple files or directories `scc directory1 directory
 ### Interesting Use Cases
 
 Used inside Intel Nemu Hypervisor to track code changes between revisions https://github.com/intel/nemu/blob/topic/virt-x86/tools/cloc-change.sh#L9
-Appears to also be used inside both http://codescoop.com/ and https://pinpoint.com/
+Appears to also be used inside both http://codescoop.com/ https://pinpoint.com/ https://github.com/chaoss/grimoirelab-graal
 
 It also is used to count code and guess language types in https://searchcode.com/ which makes it one of the most frequently run code counters in the world. 
 
@@ -383,7 +382,7 @@ Note that in all cases if the remap rule does not apply normal #! rules will app
 
 By default `scc` will output to the console. However you can produce output in other formats if you require.
 
-The different options are `tabular, wide, json, csv, cloc-yaml, html, html-table, sql, sql-insert`. 
+The different options are `tabular, wide, json, csv, csv-stream, cloc-yaml, html, html-table, sql, sql-insert`. 
 
 Note that you can write `scc` output to disk using the `-o, --output` option. This allows you to specify a file to
 write your output to. For example `scc -f html -o output.html` will run `scc` against the current directory, and output
@@ -421,6 +420,13 @@ CSV as an option is good for importing into a spreadsheet for analysis.
 
 Note that this format will give you the byte size of every file it `scc` reads allowing you to get a breakdown of the
 number of bytes processed.
+
+#### CSV-Stream
+
+csv-stream is an option useful for processing very large repositories where you are likely to run into memory issues. It's output format is 100% the same as CSV. 
+
+Note that you should not use this with the `format-multi` option as it will always print to standard output, and because of how it works will negate the memory saving it normally gains.
+savings that this option provides. Note that there is no sort applied with this option. 
 
 #### cloc-yaml 
 
@@ -694,10 +700,35 @@ Run go build for windows and linux then the following in linux, keep in mind nee
 
 ```
 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-x86_64-apple-darwin.zip scc
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-arm64-apple-darwin.zip scc
 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-x86_64-pc-windows.zip scc.exe
 GOOS=windows GOARCH=386 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-i386-pc-windows.zip scc.exe
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-x86_64-unknown-linux.zip scc
 GOOS=linux GOARCH=386 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-i386-unknown-linux.zip scc
+GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" && zip -r9 scc-2.13.0-arm64-unknown-linux.zip scc
+```
+
+### Containers
+
+Note if you plan to run `scc` in Alpine containers you will need to build with CGO_ENABLED=0.
+
+See the below dockerfile as an example on how to achieve this based on this issue https://github.com/boyter/scc/issues/208
+
+```
+FROM golang as scc-get
+
+ENV GOOS=linux \
+GOARCH=amd64 \
+CGO_ENABLED=0
+
+ARG VERSION
+RUN git clone --branch $VERSION --depth 1 https://github.com/boyter/scc
+WORKDIR /go/scc
+RUN go build -ldflags="-s -w"
+
+FROM alpine
+COPY --from=scc-get /go/scc/scc /bin/
+ENTRYPOINT ["scc"]
 ```
 
 ### Badges (beta)
